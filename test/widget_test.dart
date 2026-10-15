@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:l3_todo_list/main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 Future<void> addTodo(WidgetTester tester, String title) async {
   await tester.tap(find.byType(FloatingActionButton));
@@ -31,9 +34,111 @@ Future<void> chooseSort(WidgetTester tester, String sort) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> restartApp(WidgetTester tester) async {
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pumpAndSettle();
+  await tester.pumpWidget(const TodoApp());
+  await tester.pumpAndSettle();
+}
+
+final class FailingPreferences extends InMemorySharedPreferencesAsync {
+  FailingPreferences() : super.empty();
+
+  bool failWrites = true;
+
+  @override
+  Future<bool> setString(
+    String key,
+    String value,
+    SharedPreferencesOptions options,
+  ) async {
+    if (failWrites) {
+      throw Exception('Storage unavailable');
+    }
+    return super.setString(key, value, options);
+  }
+}
+
 void main() {
+  setUp(() {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+  });
+
+  testWidgets('Tasks, edits, completion, dates and deletion survive restart', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const TodoApp());
+    await tester.pumpAndSettle();
+    await addTodo(tester, 'Купить хлеб');
+    await addTodo(tester, 'Сделать лабораторную');
+    await chooseAction(tester, 'Сделать лабораторную', 'Редактировать');
+    await tester.enterText(find.byType(TextFormField), 'Защитить лабораторную');
+    await tester.tap(find.text('Сохранить'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pumpAndSettle();
+    final dates = tester
+        .widgetList<Text>(find.textContaining('Создана:'))
+        .map((text) => text.data)
+        .toList();
+
+    await restartApp(tester);
+    expect(find.text('Купить хлеб'), findsOneWidget);
+    expect(find.text('Защитить лабораторную'), findsOneWidget);
+    expect(tester.widget<Checkbox>(find.byType(Checkbox).first).value, isTrue);
+    expect(
+      tester
+          .widgetList<Text>(find.textContaining('Создана:'))
+          .map((text) => text.data)
+          .toList(),
+      dates,
+    );
+    await chooseAction(tester, 'Купить хлеб', 'Удалить');
+    await restartApp(tester);
+    expect(find.text('Купить хлеб'), findsNothing);
+    expect(find.text('Защитить лабораторную'), findsOneWidget);
+    await chooseAction(tester, 'Защитить лабораторную', 'Удалить');
+    await restartApp(tester);
+    expect(find.byType(Card), findsNothing);
+  });
+
+  testWidgets('Invalid saved data is not overwritten and load can be retried', (
+    tester,
+  ) async {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.withData({'todo_list': 'broken json'});
+    await tester.pumpWidget(const TodoApp());
+    await tester.pumpAndSettle();
+    expect(find.text('Не удалось загрузить задачи'), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsNothing);
+    final preferences = SharedPreferencesAsync();
+    expect(await preferences.getString('todo_list'), 'broken json');
+    await preferences.setString('todo_list', '[]');
+    await tester.tap(find.text('Повторить'));
+    await tester.pumpAndSettle();
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+  });
+
+  testWidgets('Failed save shows retry and successful retry survives restart', (
+    tester,
+  ) async {
+    final storage = FailingPreferences();
+    SharedPreferencesAsyncPlatform.instance = storage;
+    await tester.pumpWidget(const TodoApp());
+    await tester.pumpAndSettle();
+    await addTodo(tester, 'Важная задача');
+    expect(find.text('Не удалось сохранить задачи'), findsOneWidget);
+    expect(find.text('Важная задача'), findsOneWidget);
+    storage.failWrites = false;
+    await tester.tap(find.text('Повторить'));
+    await tester.pumpAndSettle();
+    await restartApp(tester);
+    expect(find.text('Важная задача'), findsOneWidget);
+  });
   testWidgets('CRUD, creation date and completed appearance', (tester) async {
     await tester.pumpWidget(const TodoApp());
+    await tester.pumpAndSettle();
     await addTodo(tester, '  Сделать лабораторную  ');
     expect(find.text('Сделать лабораторную'), findsOneWidget);
     final dateBefore = tester
@@ -67,6 +172,7 @@ void main() {
     'Empty and whitespace titles are rejected; cancel preserves data',
     (tester) async {
       await tester.pumpWidget(const TodoApp());
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Сохранить'));
@@ -102,6 +208,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const TodoApp());
+    await tester.pumpAndSettle();
     await addTodo(tester, 'Купить хлеб');
     await addTodo(tester, 'Купить молоко');
     await tester.tap(find.byType(Checkbox).first);
@@ -134,6 +241,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const TodoApp());
+    await tester.pumpAndSettle();
     await addTodo(tester, 'Яблоки');
     await addTodo(tester, 'бананы');
     expect(
@@ -170,6 +278,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const TodoApp());
+    await tester.pumpAndSettle();
     await addTodo(tester, 'Задача');
     await addTodo(tester, 'Задача');
     await tester.tap(find.byType(PopupMenuButton<String>).first);
@@ -190,6 +299,7 @@ void main() {
     addTearDown(tester.view.resetViewInsets);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await tester.pumpWidget(const TodoApp());
+    await tester.pumpAndSettle();
     final longTitle = 'Очень длинное название задачи ' * 10;
     await addTodo(tester, longTitle);
     expect(tester.takeException(), isNull);

@@ -19,6 +19,63 @@ class TodoState extends State<TodoScreen> {
   String selectedFilter = 'Все';
   String selectedSort = 'Сначала новые';
 
+  bool isLoading = true;
+  bool loadError = false;
+  bool isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    loadTodos();
+  }
+
+  Future<void> loadTodos() async {
+    setState(() {
+      isLoading = true;
+      loadError = false;
+    });
+    try {
+      await repository.loadTodos();
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          loadError = true;
+        });
+      }
+    }
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> saveTodos() async {
+    if (isSaving) {
+      return;
+    }
+    setState(() {
+      isSaving = true;
+    });
+    try {
+      await repository.saveTodos();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Не удалось сохранить задачи'),
+            action: SnackBarAction(label: 'Повторить', onPressed: saveTodos),
+          ),
+        );
+      }
+    }
+    if (mounted) {
+      setState(() {
+        isSaving = false;
+      });
+    }
+  }
+
   List<Todo> getVisibleTodos() {
     final List<Todo> result = [];
     final query = searchText.trim().toLowerCase();
@@ -50,6 +107,9 @@ class TodoState extends State<TodoScreen> {
   }
 
   Future<void> openForm(Todo? todo) async {
+    if (isSaving) {
+      return;
+    }
     final title = await Navigator.push<String>(
       context,
       MaterialPageRoute(
@@ -70,6 +130,7 @@ class TodoState extends State<TodoScreen> {
         repository.updateTodo(todo, title);
       }
     });
+    await saveTodos();
   }
 
   String formatDate(DateTime date) {
@@ -104,10 +165,14 @@ class TodoState extends State<TodoScreen> {
       child: ListTile(
         leading: Checkbox(
           value: todo.isDone,
-          onChanged: (value) {
+          onChanged: (value) async {
+            if (isSaving) {
+              return;
+            }
             setState(() {
               repository.toggleTodo(todo);
             });
+            await saveTodos();
           },
         ),
         title: Text(
@@ -122,13 +187,17 @@ class TodoState extends State<TodoScreen> {
         },
         trailing: PopupMenuButton<String>(
           tooltip: 'Действия с задачей',
-          onSelected: (action) {
+          onSelected: (action) async {
+            if (isSaving) {
+              return;
+            }
             if (action == 'edit') {
               openForm(todo);
             } else if (action == 'delete') {
               setState(() {
                 repository.deleteTodo(todo);
               });
+              await saveTodos();
             }
           },
           itemBuilder: (context) {
@@ -144,6 +213,24 @@ class TodoState extends State<TodoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading || loadError) {
+      Widget content = const CircularProgressIndicator();
+      if (loadError) {
+        content = Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Не удалось загрузить задачи'),
+            const SizedBox(height: 12),
+            FilledButton(onPressed: loadTodos, child: const Text('Повторить')),
+          ],
+        );
+      }
+      return Scaffold(
+        appBar: AppBar(title: const Text('Список задач')),
+        body: SafeArea(child: Center(child: content)),
+      );
+    }
+
     final todos = getVisibleTodos();
     String emptyText = 'Задач пока нет. Нажмите +, чтобы добавить.';
     if (repository.getTodos().isNotEmpty) {
