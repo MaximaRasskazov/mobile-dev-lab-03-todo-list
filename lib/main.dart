@@ -15,7 +15,15 @@ class TodoApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Список задач',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.indigo,
+          brightness: Brightness.dark,
+        ),
+        scaffoldBackgroundColor: const Color(0xFF0B1628),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF0B1628),
+          surfaceTintColor: Colors.transparent,
+        ),
       ),
       home: const TodoScreen(),
     );
