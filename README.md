@@ -1,17 +1,29 @@
-# l3_todo_list
+﻿# ЛР3 — список задач
 
-A new Flutter project.
+Flutter-приложение для лабораторной работы №3. Данные хранятся только в памяти и исчезают при полном перезапуске приложения.
 
-## Getting Started
+Реализованы добавление, редактирование, удаление, отметка выполнения, поиск по части названия, фильтры и дата создания. Дополнительное задание — сортировка по названию и дате создания в двух направлениях.
 
-This project is a starting point for a Flutter application.
+## Запуск
 
-A few resources to get you started if this is your first Flutter project:
+Из папки `l3_todo_list`:
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```powershell
+flutter pub get
+flutter run
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Для браузера:
+
+```powershell
+flutter run -d chrome
+```
+
+## Проверка
+
+```powershell
+flutter analyze
+flutter test
+```
+
+Подробное объяснение кода, вопросы для защиты и чек-лист находятся в [LAB3_DEFENSE_GUIDE.md](LAB3_DEFENSE_GUIDE.md).
