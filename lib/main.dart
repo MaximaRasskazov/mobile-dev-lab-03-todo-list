@@ -20,6 +20,10 @@ class TodoApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
         scaffoldBackgroundColor: const Color(0xFF0B1628),
+        cardTheme: const CardThemeData(
+          color: Color(0xFF9C4827),
+          surfaceTintColor: Colors.transparent,
+        ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF0B1628),
           surfaceTintColor: Colors.transparent,
