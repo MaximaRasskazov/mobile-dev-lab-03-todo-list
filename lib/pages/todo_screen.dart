@@ -155,15 +155,19 @@ class TodoState extends State<TodoScreen> {
 
   Widget buildTodoCard(Todo todo) {
     TextDecoration decoration = TextDecoration.none;
-    Color titleColor = Theme.of(context).colorScheme.onSurface;
+    Color titleColor = Colors.white;
     if (todo.isDone) {
       decoration = TextDecoration.lineThrough;
-      titleColor = Colors.grey;
+      titleColor = const Color(0xFFFFD8C2);
     }
 
     return Card(
       child: ListTile(
+        subtitleTextStyle: const TextStyle(color: Color(0xFFFFE2CC)),
         leading: Checkbox(
+          activeColor: Colors.white,
+          checkColor: const Color(0xFF9C4827),
+          side: const BorderSide(color: Colors.white70),
           value: todo.isDone,
           onChanged: (value) async {
             if (isSaving) {
@@ -177,7 +181,8 @@ class TodoState extends State<TodoScreen> {
         ),
         title: Text(
           todo.title,
-          maxLines: 2,
+          maxLines: 1,
+          softWrap: false,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(decoration: decoration, color: titleColor),
         ),
@@ -186,6 +191,7 @@ class TodoState extends State<TodoScreen> {
           openForm(todo);
         },
         trailing: PopupMenuButton<String>(
+          iconColor: Colors.white,
           tooltip: 'Действия с задачей',
           onSelected: (action) async {
             if (isSaving) {
